@@ -1,0 +1,20 @@
+# runtime data
+/data/
+*.db
+*.db-wal
+*.db-shm
+session.json
+.session_secret
+
+# env files with real credentials
+.env
+
+# build output
+/dist/
+tg-webdav
+tg-webdav-*
+
+# editor/OS noise
+.DS_Store
+.idea/
+.vscode/

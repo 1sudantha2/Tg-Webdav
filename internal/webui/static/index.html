@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tg-WebDAV</title>
+<link rel="stylesheet" href="/web/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📦</text></svg>">
+</head>
+<body>
+
+<!-- ── Login ──────────────────────────────────────────────────────────── -->
+<div id="login" class="login hidden">
+  <form id="login-form" class="login-card" autocomplete="on">
+    <div class="logo">📦</div>
+    <h1>Tg-WebDAV</h1>
+    <p class="muted">Your Telegram channel, mounted as a drive.</p>
+    <label>Username
+      <input id="login-user" type="text" name="username" autocomplete="username" required>
+    </label>
+    <label>Password
+      <input id="login-pass" type="password" name="password" autocomplete="current-password" required>
+    </label>
+    <div id="login-error" class="error hidden"></div>
+    <button type="submit" class="btn primary block">Sign in</button>
+  </form>
+</div>
+
+<!-- ── App ────────────────────────────────────────────────────────────── -->
+<div id="app" class="app hidden">
+  <header class="topbar">
+    <div class="brand">📦 <span>Tg-WebDAV</span></div>
+    <nav id="crumbs" class="crumbs" aria-label="breadcrumb"></nav>
+    <div class="actions">
+      <button id="btn-mkdir" class="btn ghost" title="New folder">🗀 New folder</button>
+      <button id="btn-upload" class="btn primary" title="Upload files">⬆ Upload</button>
+      <button id="btn-logout" class="btn ghost" title="Sign out">⎋</button>
+    </div>
+  </header>
+
+  <div id="dropzone" class="dropzone">
+    <div id="upload-progress" class="upload-progress hidden">
+      <div class="bar"><div id="upload-bar" class="fill"></div></div>
+      <span id="upload-label" class="muted"></span>
+    </div>
+    <table class="listing">
+      <thead>
+        <tr><th class="c-name">Name</th><th class="c-size">Size</th><th class="c-mtime">Modified</th><th class="c-act"></th></tr>
+      </thead>
+      <tbody id="entries"></tbody>
+    </table>
+    <div id="empty" class="empty hidden">This folder is empty — drop files anywhere or hit Upload.</div>
+    <div id="drop-hint" class="drop-hint hidden">Drop files to upload to this folder</div>
+  </div>
+</div>
+
+<input type="file" id="file-picker" multiple hidden>
+
+<!-- ── Player modal ──────────────────────────────────────────────────── -->
+<div id="player" class="modal hidden">
+  <div class="modal-backdrop" data-close></div>
+  <div class="modal-body">
+    <div class="modal-head">
+      <h2 id="player-title"></h2>
+      <div class="modal-actions">
+        <a id="player-download" class="btn ghost" download>⬇ Download</a>
+        <button class="btn ghost" data-close>✕</button>
+      </div>
+    </div>
+    <div id="player-stage" class="player-stage"></div>
+    <div id="player-error" class="error hidden"></div>
+  </div>
+</div>
+
+<script src="/web/app.js"></script>
+</body>
+</html>
