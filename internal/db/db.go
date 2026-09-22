@@ -37,15 +37,6 @@ type Node struct {
 	Doc      []byte // TL-encoded tg.Document (files only).
 }
 
-// Path returns the absolute virtual path of the node given its ancestors.
-// It is mostly useful for logging.
-func (n *Node) PathOf(parentPath string) string {
-	if parentPath == "/" {
-		return "/" + n.Name
-	}
-	return parentPath + "/" + n.Name
-}
-
 // DB is the metadata store.
 type DB struct {
 	conn *sql.DB

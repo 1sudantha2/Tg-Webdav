@@ -33,12 +33,10 @@ type Service struct {
 	dispatcher tg.UpdateDispatcher
 	client     *telegram.Client
 
-	mu          sync.RWMutex
-	api         *tg.Client
-	runCtx      context.Context
-	sender      *message.Sender
-	channel     tg.InputPeerClass // resolved storage channel
-	channelInfo *tg.Channel
+	mu      sync.RWMutex
+	api     *tg.Client
+	sender  *message.Sender
+	channel tg.InputPeerClass // resolved storage channel
 }
 
 // New creates the Telegram service. Call Run to connect and authenticate.
@@ -68,7 +66,6 @@ func (s *Service) Run(ctx context.Context) error {
 
 		s.mu.Lock()
 		s.api = api
-		s.runCtx = ctx
 		s.sender = message.NewSender(api)
 		s.mu.Unlock()
 
@@ -243,7 +240,6 @@ func (s *Service) setChannel(ch *tg.Channel) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.channel = &tg.InputPeerChannel{ChannelID: ch.ID, AccessHash: ch.AccessHash}
-	s.channelInfo = ch
 	slog.Info("storage channel resolved", "id", ch.ID, "title", ch.Title)
 }
 
