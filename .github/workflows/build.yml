@@ -43,7 +43,19 @@ jobs:
         run: go vet ./...
 
       - name: Test
-        run: go test ./...
+        run: |
+          set -o pipefail
+          go test -v ./... 2>&1 | tee /tmp/test.log
+
+      - name: Publish test log on failure
+        if: failure() && github.event_name == 'push'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          tail -c 60000 /tmp/test.log > ci-test.log
+          git add -f ci-test.log
+          git commit -m "ci: publish failing test log"
+          git push origin "HEAD:${GITHUB_REF#refs/heads/}"
 
       - name: Cross-compile static binary
         run: |
