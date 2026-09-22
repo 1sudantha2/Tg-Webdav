@@ -43,19 +43,7 @@ jobs:
         run: go vet ./...
 
       - name: Test
-        run: |
-          set -o pipefail
-          go test -v ./... 2>&1 | tee /tmp/test.log
-
-      - name: Publish test log on failure
-        if: failure() && github.event_name == 'push'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          tail -c 60000 /tmp/test.log > ci-test.log
-          git add -f ci-test.log
-          git commit -m "ci: publish failing test log"
-          git push origin "HEAD:${GITHUB_REF#refs/heads/}"
+        run: go test ./...
 
       - name: Cross-compile static binary
         run: |
@@ -64,6 +52,48 @@ jobs:
             go build -trimpath -ldflags "-s -w" \
             -o dist/tg-webdav-linux-amd64 ./cmd/server
           chmod +x dist/tg-webdav-linux-amd64
+
+      - name: Smoke test (HTTP layer, auth, WebDAV PROPFIND, Web UI)
+        working-directory: dist
+        run: |
+          cat > .env <<'EOF'
+          PORT=18080
+          TELEGRAM_API_ID=999999
+          TELEGRAM_API_HASH=00000000000000000000000000000000
+          TELEGRAM_BOT_TOKEN=99999999:AAfakefakefakefakefakefakefakefake
+          TELEGRAM_CHANNEL_ID=-1001234567890
+          WEBDAV_USER=admin
+          WEBDAV_PASSWORD=test123
+          EOF
+          ./tg-webdav-linux-amd64 > server.log 2>&1 &
+          SERVER_PID=$!
+          # wait for the listener
+          for i in $(seq 1 40); do
+            curl -sf -o /dev/null http://127.0.0.1:18080/web/ && break
+            sleep 0.5
+          done
+          set -e
+          # Web UI shell is served
+          curl -sf http://127.0.0.1:18080/web/ | grep -q 'Tg-WebDAV'
+          # DAV demands auth
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18080/dav/)" = 401
+          # PROPFIND with Basic auth -> 207 Multi-Status listing /general
+          curl -sf -X PROPFIND -u admin:test123 -H 'Depth: 1' \
+            http://127.0.0.1:18080/dav/ | grep -q general
+          # MKCOL + PROPFIND roundtrip
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X MKCOL -u admin:test123 \
+            http://127.0.0.1:18080/dav/movies)" = 201
+          # Web UI login issues a session cookie usable on the JSON API
+          curl -sf -c cj -X POST -H 'Content-Type: application/json' \
+            -d '{"username":"admin","password":"test123"}' \
+            http://127.0.0.1:18080/web/api/login > /dev/null
+          curl -sf -b cj 'http://127.0.0.1:18080/web/api/ls?path=/' | grep -q movies
+          # bad credentials are rejected
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' \
+            -d '{"username":"admin","password":"wrong"}' \
+            http://127.0.0.1:18080/web/api/login)" = 401
+          kill $SERVER_PID || true
+          echo "smoke test OK"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

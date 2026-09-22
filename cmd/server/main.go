@@ -65,9 +65,11 @@ func run() error {
 	}
 
 	mux := http.NewServeMux()
-	mux.Handle("/dav", redirectTo("/dav/"))
+	// Both the bare and trailing-slash forms are served directly: some
+	// WebDAV clients (Windows WebClient) do not follow redirects on PROPFIND.
+	mux.Handle("/dav", davHandler)
 	mux.Handle("/dav/", davHandler)
-	mux.Handle("/web", redirectTo("/web/"))
+	mux.Handle("/web", ui)
 	mux.Handle("/web/", ui)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
@@ -108,12 +110,21 @@ func run() error {
 		}
 	}()
 
-	// Blocks until ctx is canceled or Telegram fails fatally.
-	return tgSvc.Run(ctx)
+	// Run the Telegram client until shutdown. Connection or auth failures do
+	// not kill the HTTP server: WebDAV keeps serving the already indexed
+	// tree while Telegram reconnects with backoff.
+	for {
+		err := tgSvc.Run(ctx)
+		if ctx.Err() != nil {
+			return nil
+		}
+		slog.Error("telegram connection lost, retrying in 5s", "err", err)
+		select {
+		case <-time.After(5 * time.Second):
+		case <-ctx.Done():
+			return nil
+		}
+	}
 }
 
-func redirectTo(target string) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, target, http.StatusMovedPermanently)
-	})
-}
+
