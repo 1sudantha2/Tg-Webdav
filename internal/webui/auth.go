@@ -112,11 +112,12 @@ func (a *Authenticator) sign(payload string) string {
 }
 
 func (a *Authenticator) validToken(token string) bool {
-	payload, sig, ok := strings.Cut(token, ".")
+	// token format: base64(user) "." expiry "." hex(hmac-sha256)
+	userPart, rest, ok := strings.Cut(token, ".")
 	if !ok {
 		return false
 	}
-	_, expStr, ok := strings.Cut(payload, ".")
+	expStr, sig, ok := strings.Cut(rest, ".")
 	if !ok {
 		return false
 	}
@@ -124,6 +125,7 @@ func (a *Authenticator) validToken(token string) bool {
 	if err != nil || time.Now().Unix() > expiry {
 		return false
 	}
+	payload := userPart + "." + expStr
 	want := a.sign(payload)
 	return hmac.Equal([]byte(want), []byte(sig))
 }
