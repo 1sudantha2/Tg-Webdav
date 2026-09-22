@@ -3,6 +3,7 @@ package telegram
 import (
 	"context"
 	"fmt"
+	"io"
 
 	"github.com/gotd/td/bin"
 	"github.com/gotd/td/tg"
