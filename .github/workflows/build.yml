@@ -56,43 +56,40 @@ jobs:
       - name: Smoke test (HTTP layer, auth, WebDAV PROPFIND, Web UI)
         working-directory: dist
         run: |
-          cat > .env <<'EOF'
-          PORT=18080
-          TELEGRAM_API_ID=999999
-          TELEGRAM_API_HASH=00000000000000000000000000000000
-          TELEGRAM_BOT_TOKEN=99999999:AAfakefakefakefakefakefakefakefake
-          TELEGRAM_CHANNEL_ID=-1001234567890
-          WEBDAV_USER=admin
-          WEBDAV_PASSWORD=test123
-          EOF
+          fail() {
+            echo "::error::smoke test failed ($1); server.log: $(tail -c 1500 server.log 2>/dev/null | tr '\n' '|')"
+            exit 1
+          }
+          printf '%s\n' \
+            'PORT=18080' \
+            'TELEGRAM_API_ID=999999' \
+            'TELEGRAM_API_HASH=00000000000000000000000000000000' \
+            'TELEGRAM_BOT_TOKEN=99999999:AAfakefakefakefakefakefakefakefake' \
+            'TELEGRAM_CHANNEL_ID=-1001234567890' \
+            'WEBDAV_USER=admin' \
+            'WEBDAV_PASSWORD=test123' > .env
           ./tg-webdav-linux-amd64 > server.log 2>&1 &
           SERVER_PID=$!
-          # wait for the listener
+          sleep 1
+          kill -0 $SERVER_PID 2>/dev/null || fail "server exited immediately"
           for i in $(seq 1 40); do
             curl -sf -o /dev/null http://127.0.0.1:18080/web/ && break
             sleep 0.5
           done
-          set -e
-          # Web UI shell is served
-          curl -sf http://127.0.0.1:18080/web/ | grep -q 'Tg-WebDAV'
-          # DAV demands auth
-          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18080/dav/)" = 401
-          # PROPFIND with Basic auth -> 207 Multi-Status listing /general
+          curl -sf http://127.0.0.1:18080/web/ | grep -q 'Tg-WebDAV' || fail "web ui"
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18080/dav/)" = 401 || fail "dav auth"
           curl -sf -X PROPFIND -u admin:test123 -H 'Depth: 1' \
-            http://127.0.0.1:18080/dav/ | grep -q general
-          # MKCOL + PROPFIND roundtrip
+            http://127.0.0.1:18080/dav/ | grep -q general || fail "propfind"
           test "$(curl -s -o /dev/null -w '%{http_code}' -X MKCOL -u admin:test123 \
-            http://127.0.0.1:18080/dav/movies)" = 201
-          # Web UI login issues a session cookie usable on the JSON API
+            http://127.0.0.1:18080/dav/movies)" = 201 || fail "mkcol"
           curl -sf -c cj -X POST -H 'Content-Type: application/json' \
             -d '{"username":"admin","password":"test123"}' \
-            http://127.0.0.1:18080/web/api/login > /dev/null
-          curl -sf -b cj 'http://127.0.0.1:18080/web/api/ls?path=/' | grep -q movies
-          # bad credentials are rejected
+            http://127.0.0.1:18080/web/api/login > /dev/null || fail "login"
+          curl -sf -b cj 'http://127.0.0.1:18080/web/api/ls?path=/' | grep -q movies || fail "ls"
           test "$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' \
             -d '{"username":"admin","password":"wrong"}' \
-            http://127.0.0.1:18080/web/api/login)" = 401
-          kill $SERVER_PID || true
+            http://127.0.0.1:18080/web/api/login)" = 401 || fail "bad login"
+          kill $SERVER_PID 2>/dev/null || true
           echo "smoke test OK"
 
       - name: Upload artifact
