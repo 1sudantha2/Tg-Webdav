@@ -52,9 +52,11 @@ Grab it from the workflow artifacts or the release assets:
 
 ```bash
 sudo mkdir -p /opt/tg-webdav && cd /opt/tg-webdav
-sudo curl -L -o tg-webdav https://github.com/<you>/Tg-Webdav/releases/latest/download/tg-webdav-linux-amd64
+# From a release asset (once a release is published):
+sudo curl -L -o tg-webdav https://github.com/1sudantha2/Tg-Webdav/releases/latest/download/tg-webdav-linux-amd64
 sudo chmod +x tg-webdav
-sudo mkdir -p /opt/tg-webdav/data
+# Or grab the latest build artifact from the Actions tab:
+#   https://github.com/1sudantha2/Tg-Webdav/actions  →  build  →  tg-webdav-linux-amd64
 ```
 
 ### Option B — build from source

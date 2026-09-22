@@ -58,13 +58,15 @@ func (u *UI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Static assets live below the /web/ prefix; unknown paths fall back to
-	// the single-page shell.
-	if rel == "" {
-		rel = "index.html"
-	}
+	// Static assets live below the /web/ prefix; the bare path serves the
+	// single-page shell. (Serving "/" instead of "/index.html" avoids
+	// http.FileServer's canonicalizing redirect for index pages.)
 	r2 := r.Clone(r.Context())
-	r2.URL.Path = "/" + rel
+	if rel == "" {
+		r2.URL.Path = "/"
+	} else {
+		r2.URL.Path = "/" + rel
+	}
 	r2.URL.RawPath = ""
 	u.static.ServeHTTP(w, r2)
 }
