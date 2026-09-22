@@ -19,7 +19,7 @@ const maxNameLen = 180
 //  4. otherwise a MIME-aware timestamped name: file_20060102_150405.<ext>.
 func decideName(caption, originalName, mimeType string, at time.Time) string {
 	if name := sanitizeName(caption); name != "" {
-		if path.Ext(name) == "" {
+		if !hasRealExt(name) {
 			if ext := extForMIME(mimeType); ext != "" {
 				name += ext
 			}
@@ -27,7 +27,7 @@ func decideName(caption, originalName, mimeType string, at time.Time) string {
 		return name
 	}
 	if name := sanitizeName(originalName); name != "" {
-		if path.Ext(name) == "" {
+		if !hasRealExt(name) {
 			if ext := extForMIME(mimeType); ext != "" {
 				name += ext
 			}
@@ -39,6 +39,22 @@ func decideName(caption, originalName, mimeType string, at time.Time) string {
 		ext = ".bin"
 	}
 	return "file_" + at.UTC().Format("20060102_150405") + ext
+}
+
+// hasRealExt reports whether name ends with a plausible file extension:
+// a dot followed by at most 6 letters/digits. This keeps names like
+// "archive.backup.2026" from being mistaken for ".2026" files.
+func hasRealExt(name string) bool {
+	ext := path.Ext(name)
+	if ext == "" || len(ext) > 7 {
+		return false
+	}
+	for _, r := range ext[1:] {
+		if !unicode.IsLetter(r) && !unicode.IsDigit(r) {
+			return false
+		}
+	}
+	return true
 }
 
 // sanitizeName strips path separators, control characters and other

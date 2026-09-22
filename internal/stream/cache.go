@@ -91,12 +91,13 @@ func (c *ChunkCache) Get(ctx context.Context, key string, fetch FetchFunc) ([]by
 		close(it.ready)
 		return nil, err
 	}
+	ready := it.ready
 	it.data = data
-	it.ready = nil // marks the entry as completed
 	it.err = nil
+	it.ready = nil // marks the entry as completed
 	c.used += int64(len(data))
 	c.evictLocked(it)
-	close(it.ready)
+	close(ready)
 	return data, nil
 }
 
